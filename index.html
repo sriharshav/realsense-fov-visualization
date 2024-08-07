@@ -4,7 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camera Field of View Visualization</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        #visualization {
+            border: 1px solid black;
+            width: 100%;
+            height: 80vh;
+        }
+        .camera {
+            fill: gray;
+        }
+        .fov {
+            fill: rgba(0, 100, 80, 0.2);
+            stroke: rgba(0, 100, 80, 0.6);
+        }
+    </style>
 </head>
 <body>
     <h1>Camera Field of View Visualization</h1>
@@ -22,7 +35,7 @@
 
     <br><br>
 
-    <div id="fovPlot"></div>
+    <svg id="visualization"></svg>
 
     <script>
         const cameraSpecs = {
@@ -40,28 +53,51 @@
             const width = 2 * distance * Math.tan(hFOV / 2);
             const length = 2 * distance * Math.tan(vFOV / 2);
 
-            plotFOV(width, length, distance);
+            drawFOV(width, length, distance);
         }
 
-        function plotFOV(width, length, distance) {
-            const data = [{
-                type: 'scatter',
-                x: [0, width, width, 0, 0],
-                y: [0, 0, length, length, 0],
-                fill: 'toself',
-                fillcolor: 'rgba(0, 100, 80, 0.2)',
-                line: { color: 'rgba(0, 100, 80, 0.6)' },
-                name: `FOV at ${distance} meters`
-            }];
+        function drawFOV(width, length, distance) {
+            const svg = document.getElementById('visualization');
+            svg.innerHTML = '';
 
-            const layout = {
-                title: `Camera Field of View (FOV)`,
-                xaxis: { title: 'Width (meters)' },
-                yaxis: { title: 'Length (meters)' },
-                showlegend: false
-            };
+            const cameraX = svg.clientWidth / 2;
+            const cameraY = svg.clientHeight - 20;
 
-            Plotly.newPlot('fovPlot', data, layout);
+            const fovWidth = width * 100;
+            const fovHeight = length * 100;
+            const fovX1 = cameraX - fovWidth / 2;
+            const fovX2 = cameraX + fovWidth / 2;
+            const fovY = cameraY - fovHeight;
+
+            // Draw camera
+            const camera = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            camera.setAttribute("x", cameraX - 10);
+            camera.setAttribute("y", cameraY - 20);
+            camera.setAttribute("width", 20);
+            camera.setAttribute("height", 20);
+            camera.setAttribute("class", "camera");
+            svg.appendChild(camera);
+
+            // Draw FOV cone
+            const fov = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            fov.setAttribute("points", `${cameraX},${cameraY} ${fovX1},${fovY} ${fovX2},${fovY}`);
+            fov.setAttribute("class", "fov");
+            svg.appendChild(fov);
+
+            // Draw dimensions text
+            const widthText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            widthText.setAttribute("x", (fovX1 + fovX2) / 2);
+            widthText.setAttribute("y", fovY - 10);
+            widthText.setAttribute("text-anchor", "middle");
+            widthText.textContent = `Width: ${width.toFixed(2)} m`;
+            svg.appendChild(widthText);
+
+            const lengthText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            lengthText.setAttribute("x", cameraX + fovWidth / 2 + 10);
+            lengthText.setAttribute("y", (cameraY + fovY) / 2);
+            lengthText.setAttribute("text-anchor", "start");
+            lengthText.textContent = `Length: ${length.toFixed(2)} m`;
+            svg.appendChild(lengthText);
         }
 
         // Initial plot
