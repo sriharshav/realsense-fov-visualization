@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Field of View Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>Camera Field of View Visualization</h1>
+    <label for="cameraSelect">Select Camera Type:</label>
+    <select id="cameraSelect" onchange="updateFOV()">
+        <option value="D415">Intel RealSense D415</option>
+        <option value="D435">Intel RealSense D435</option>
+        <!-- Add more cameras here if needed -->
+    </select>
+
+    <br><br>
+
+    <label for="distanceInput">Enter Distance (meters):</label>
+    <input type="number" id="distanceInput" value="1" step="0.1" onchange="updateFOV()">
+
+    <br><br>
+
+    <div id="fovPlot"></div>
+
+    <script>
+        const cameraSpecs = {
+            'D415': { hFOV: 69.4, vFOV: 42.5 },
+            'D435': { hFOV: 86, vFOV: 57 },
+            // Add more cameras with their hFOV and vFOV here
+        };
+
+        function updateFOV() {
+            const cameraType = document.getElementById('cameraSelect').value;
+            const distance = parseFloat(document.getElementById('distanceInput').value);
+            const hFOV = cameraSpecs[cameraType].hFOV * Math.PI / 180;
+            const vFOV = cameraSpecs[cameraType].vFOV * Math.PI / 180;
+
+            const width = 2 * distance * Math.tan(hFOV / 2);
+            const length = 2 * distance * Math.tan(vFOV / 2);
+
+            plotFOV(width, length, distance);
+        }
+
+        function plotFOV(width, length, distance) {
+            const data = [{
+                type: 'scatter',
+                x: [0, width, width, 0, 0],
+                y: [0, 0, length, length, 0],
+                fill: 'toself',
+                fillcolor: 'rgba(0, 100, 80, 0.2)',
+                line: { color: 'rgba(0, 100, 80, 0.6)' },
+                name: `FOV at ${distance} meters`
+            }];
+
+            const layout = {
+                title: `Camera Field of View (FOV)`,
+                xaxis: { title: 'Width (meters)' },
+                yaxis: { title: 'Length (meters)' },
+                showlegend: false
+            };
+
+            Plotly.newPlot('fovPlot', data, layout);
+        }
+
+        // Initial plot
+        updateFOV();
+    </script>
+</body>
+</html>
