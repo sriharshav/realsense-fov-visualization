@@ -5,44 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Camera Field of View Visualization</title>
     <style>
-        #visualization {
-            border: 1px solid black;
-            width: 100%;
-            height: 80vh;
-        }
-        .camera {
-            fill: gray;
-        }
-        .fov {
-            fill: rgba(0, 100, 80, 0.2);
-            stroke: rgba(0, 100, 80, 0.6);
+        body { margin: 0; }
+        canvas { display: block; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
-    <h1>Camera Field of View Visualization</h1>
-    <label for="cameraSelect">Select Camera Type:</label>
-    <select id="cameraSelect" onchange="updateFOV()">
-        <option value="D415">Intel RealSense D415</option>
-        <option value="D435">Intel RealSense D435</option>
-        <!-- Add more cameras here if needed -->
-    </select>
-
-    <br><br>
-
-    <label for="distanceInput">Enter Distance (meters):</label>
-    <input type="number" id="distanceInput" value="1" step="0.1" onchange="updateFOV()">
-
-    <br><br>
-
-    <svg id="visualization"></svg>
-
+    <div id="controls">
+        <label for="cameraSelect">Select Camera Type:</label>
+        <select id="cameraSelect" onchange="updateFOV()">
+            <option value="D415">Intel RealSense D415</option>
+            <option value="D435">Intel RealSense D435</option>
+            <!-- Add more cameras here if needed -->
+        </select>
+        <br><br>
+        <label for="distanceInput">Enter Distance (meters):</label>
+        <input type="number" id="distanceInput" value="1" step="0.1" onchange="updateFOV()">
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
     <script>
         const cameraSpecs = {
             'D415': { hFOV: 69.4, vFOV: 42.5 },
             'D435': { hFOV: 86, vFOV: 57 },
             // Add more cameras with their hFOV and vFOV here
         };
+
+        let scene, camera, renderer, controls, fovRectangle, fovCone;
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 5);
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Controls setup
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+            // Initial objects
+            createFOVObjects();
+            
+            // Initial update
+            updateFOV();
+
+            // Animation loop
+            animate();
+        }
+
+        function createFOVObjects() {
+            // Camera representation
+            const cameraGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            const cameraMaterial = new THREE.MeshBasicMaterial({ color: 0x808080 });
+            const cameraMesh = new THREE.Mesh(cameraGeometry, cameraMaterial);
+            scene.add(cameraMesh);
+
+            // FOV rectangle
+            const rectGeometry = new THREE.PlaneGeometry(1, 1);
+            const rectMaterial = new THREE.MeshBasicMaterial({ color: 0x00a650, side: THREE.DoubleSide, opacity: 0.5, transparent: true });
+            fovRectangle = new THREE.Mesh(rectGeometry, rectMaterial);
+            scene.add(fovRectangle);
+
+            // FOV cone
+            const coneGeometry = new THREE.ConeGeometry(0.5, 2, 4, 1, true);
+            const coneMaterial = new THREE.MeshBasicMaterial({ color: 0x00a650, wireframe: true });
+            fovCone = new THREE.Mesh(coneGeometry, coneMaterial);
+            fovCone.position.y = -1;
+            scene.add(fovCone);
+        }
 
         function updateFOV() {
             const cameraType = document.getElementById('cameraSelect').value;
@@ -51,57 +95,30 @@
             const vFOV = cameraSpecs[cameraType].vFOV * Math.PI / 180;
 
             const width = 2 * distance * Math.tan(hFOV / 2);
-            const length = 2 * distance * Math.tan(vFOV / 2);
+            const height = 2 * distance * Math.tan(vFOV / 2);
 
-            drawFOV(width, length, distance);
+            // Update rectangle
+            fovRectangle.scale.set(width, height, 1);
+            fovRectangle.position.set(0, -distance, 0);
+
+            // Update cone
+            fovCone.scale.set(width / 2, distance, width / 2);
+            fovCone.position.set(0, -distance / 2, 0);
         }
 
-        function drawFOV(width, length, distance) {
-            const svg = document.getElementById('visualization');
-            svg.innerHTML = '';
-
-            const cameraX = svg.clientWidth / 2;
-            const cameraY = svg.clientHeight - 20;
-
-            const fovWidth = width * 100;
-            const fovHeight = length * 100;
-            const fovX1 = cameraX - fovWidth / 2;
-            const fovX2 = cameraX + fovWidth / 2;
-            const fovY = cameraY - fovHeight;
-
-            // Draw camera
-            const camera = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            camera.setAttribute("x", cameraX - 10);
-            camera.setAttribute("y", cameraY - 20);
-            camera.setAttribute("width", 20);
-            camera.setAttribute("height", 20);
-            camera.setAttribute("class", "camera");
-            svg.appendChild(camera);
-
-            // Draw FOV cone
-            const fov = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-            fov.setAttribute("points", `${cameraX},${cameraY} ${fovX1},${fovY} ${fovX2},${fovY}`);
-            fov.setAttribute("class", "fov");
-            svg.appendChild(fov);
-
-            // Draw dimensions text
-            const widthText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            widthText.setAttribute("x", (fovX1 + fovX2) / 2);
-            widthText.setAttribute("y", fovY - 10);
-            widthText.setAttribute("text-anchor", "middle");
-            widthText.textContent = `Width: ${width.toFixed(2)} m`;
-            svg.appendChild(widthText);
-
-            const lengthText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            lengthText.setAttribute("x", cameraX + fovWidth / 2 + 10);
-            lengthText.setAttribute("y", (cameraY + fovY) / 2);
-            lengthText.setAttribute("text-anchor", "start");
-            lengthText.textContent = `Length: ${length.toFixed(2)} m`;
-            svg.appendChild(lengthText);
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
         }
 
-        // Initial plot
-        updateFOV();
+        // Initial setup
+        window.addEventListener('load', init);
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
